@@ -1,0 +1,440 @@
+---
+title: "final_project"
+author: "Mario Tapia-Pacheco"
+date: "2023-10-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+data <- read.csv('/Users/mario/Desktop/HW/Y4/F23/PSTAT 131/final_project/rainbow_data.csv')
+```
+
+## Introduction
+
+Hi.
+
+I do not plan to use weapon attachment information so I will drop all those 
+columns.
+
+```{r}
+colnames(data)
+```
+
+```{r}
+data1 <- data[-c(1,2,6,20:32)]
+# does end round reason help if i want to predict new outcomes without knowing 
+# if they won or not? 
+```
+
+## Exploratory Data Analysis
+
+```{r}
+summary(data1)
+```
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+library(dplyr)
+library(ggplot2)
+library(corrplot)
+library(kknn)
+library(glmnet)
+library(naniar)
+library(discrim)
+library(ranger)
+library(randomForest)
+library(xgboost)
+library(MASS)
+tidymodels_prefer()
+```
+
+```{r}
+data2 <- data1
+data2$skillrank <- factor(data2$skillrank,
+                          levels = c('Unranked', 'Copper', 'Bronze',
+                                     'Silver', 'Gold', 'Platinum', 'Diamond'))
+
+data1$skillrank <- factor(data1$skillrank, 
+                          levels = c('Unranked', 'Copper', 'Bronze',
+                                     'Silver', 'Gold', 'Platinum', 'Diamond'))
+
+data1$haswon <- factor(data1$haswon, levels = c(0, 1))
+```
+
+```{r}
+has_won_no <- data1 %>%
+  filter(haswon == 0) %>%
+  summarise(count = n())
+
+has_won_yes <- data1 %>%
+  filter(haswon == 1) %>% 
+  summarize(count = n())
+
+has_won_counts <- bind_rows(has_won_yes, has_won_no) %>% 
+  tibble() %>% mutate(has_won_ = c("Yes", "No")) %>% 
+  select(has_won_, count)
+has_won_counts
+```
+
+There are 2478 haswon = 0 (lost) and 2522 haswon = 1 (won). The observations 
+for each are balanced.
+
+Let's take a closer look at the data.
+
+```{r}
+data2 %>%
+  select(skillrank, haswon) %>%
+  group_by(skillrank) %>%
+  summarise(winning_avg = mean(haswon))
+
+# there seems to be a positive correlation here with rank and winning avg
+```
+
+```{r}
+data2 %>%
+  select(role, haswon) %>%
+  group_by(role) %>%
+  summarise(winning_avg = mean(haswon))
+
+# attackers and defenders winning avg are balanced
+```
+
+```{r}
+data2 %>%
+  select(gamemode, haswon) %>%
+  group_by(gamemode) %>%
+  summarise(winning_avg = mean(haswon))
+
+# different game mode avgs seem relatively balanced
+```
+
+```{r}
+data2 %>%
+  select(gamemode, role, haswon) %>%
+  group_by(gamemode, role) %>%
+  summarise(winning_avg = mean(haswon))
+
+# different game mode avgs even grouped by role seem relatively balanced
+```
+
+```{r}
+data2 %>%
+  select(operator, haswon) %>%
+  group_by(operator) %>%
+  summarise(winning_avg = mean(haswon))
+
+# some ops such as different reserves have higher win avg
+```
+
+```{r}
+data2 %>%
+  select(mapname, haswon) %>%
+  group_by(mapname) %>%
+  summarise(winning_avg = mean(haswon))
+
+# maps are pretty balanced
+```
+
+```{r}
+data2 %>%
+  select(nbkills, haswon) %>%
+  group_by(nbkills) %>%
+  summarise(winning_avg = mean(haswon))
+
+# there is likely a positive correlation here with kills and winning avg
+```
+
+
+```{r}
+data2 %>%
+  select(isdead, haswon) %>%
+  group_by(isdead) %>%
+  summarise(winning_avg = mean(haswon))
+
+# there seems to be a relationship here with dying and winning avg
+```
+
+```{r}
+data2 %>%
+  select(platform, haswon) %>%
+  group_by(platform) %>%
+  summarise(winning_avg = mean(haswon))
+
+# looks balanced among diff platforms
+```
+
+```{r}
+data2 %>%
+  select(roundnumber, haswon) %>%
+  group_by(roundnumber) %>%
+  summarise(winning_avg = mean(haswon))
+
+# looks balanced
+```
+
+```{r}
+data2 %>%
+  select(objectivelocation, role, haswon) %>%
+  group_by(objectivelocation, role) %>%
+  summarise(winning_avg = mean(haswon))
+
+# looks like a multivariate relationship here
+# interaction?
+```
+
+```{r}
+data2 %>%  
+  select(endroundreason, haswon) %>%
+  group_by(endroundreason) %>%
+  summarise(winning_avg = mean(haswon))
+
+# should look at this w other vars but role just results in 0/1
+```
+
+```{r}
+data2 %>%
+  select(mapname, role, haswon) %>%
+  group_by(mapname, role) %>%
+  summarise(winning_avg = mean(haswon))
+
+# only chalet and bartlett seem to have a relationship w these vars
+```
+
+Let's visualize some of these.
+
+```{r}
+data2 %>% 
+  select(is.numeric) %>% 
+  cor() %>% 
+  corrplot(type = 'lower', diag = FALSE, 
+           method = 'color')
+```
+
+
+```{r}
+data2 %>%
+  select(clearancelevel, haswon) %>%
+  ggplot(aes(x = clearancelevel, y = mean(haswon), color = haswon)) +
+  geom_jitter(alpha=0.3) +
+  labs(x='Level', y='Has Won') +
+  scale_y_sqrt() # scale_x_continuous(trans='log10')
+
+# this doesn't tell me much, maybe scale it?
+# log and sqrt trans don't reveal any new patterns
+# color by haswon?
+```
+
+```{r}
+data1 %>% 
+  ggplot(aes(x = skillrank)) +
+  geom_bar() +
+  theme_bw()
+```
+
+```{r}
+data1 %>% 
+  ggplot(aes(x = clearancelevel)) +
+  geom_histogram(bins=40) +
+  theme_bw()
+```
+
+Based on my EDA, it seems that there are a good amount of variables that can 
+influence win rate, namely operator, skillrank, mapname/objective_location 
+and role, nbkills, and isdead.
+
+## Fitting Models
+
+Now let's move onto fitting models.
+```{r}
+set.seed(1121)
+rainbow_split <- initial_split(data1, strata = "skillrank", prop = 0.75)
+
+rainbow_train <- training(rainbow_split)
+rainbow_test <- testing(rainbow_split)
+
+rainbow_fold <- vfold_cv(rainbow_train, v = 10)
+```
+
+```{r}
+rainbow_recipe <- recipe(
+  haswon ~ clearancelevel + skillrank + role + nbkills + isdead + objectivelocation, 
+  data = rainbow_train) %>% 
+  step_dummy(all_nominal_predictors()) %>%
+  step_interact(terms = ~ starts_with('role'):starts_with('objectivelocation')) #%>%
+  # step_rm(endroundreason) %>% # this says the column doesnt exist, [put it in revipe]
+  # step_normalize(all_numeric_predictors()) #%>% # maybe don't normalize? end up with - kills
+ # step_nzv(all_predictors())
+
+prep(rainbow_recipe) %>% bake(new_data = rainbow_train)
+```
+
+```{r}
+knn_model <- nearest_neighbor(neighbors=10) %>% # tune n
+  set_engine("kknn") %>% 
+  set_mode("classification")
+
+rainbow_knn_wflow <- workflow() %>%
+  add_model(knn_model) %>%
+  add_recipe(rainbow_recipe)
+
+rainbow_fit_knn <- fit(rainbow_knn_wflow, rainbow_train)
+```
+
+```{r}
+log_reg_rainbow <- logistic_reg() %>%
+  set_mode("classification") %>%
+  set_engine("glm")
+
+rainbow_log_wflow <- workflow() %>% 
+  add_recipe(rainbow_recipe) %>% 
+  add_model(log_reg_rainbow)
+
+rainbow_fit_log <- fit(rainbow_log_wflow, data = rainbow_train)
+```
+
+```{r}
+rf_rainbow <- rand_forest(
+  mtry = tune(), 
+  trees = 200, 
+  min_n = tune()) %>%
+  set_mode("classification") %>%
+  set_engine("ranger")
+
+rainbow_rf_wflow <- workflow() %>% 
+  add_recipe(rainbow_recipe) %>% 
+  add_model(rf_rainbow)
+
+rb_grid_rf <- grid_regular(mtry(range = c(0, 150)),  # look into this
+                        min_n(range = c(0, 10)),  # redo this 
+                             levels = 10)  # also tune ntrees
+# tune_rb_rf <- tune_grid(
+#   rainbow_rf_wflow,
+#   resamples = rainbow_fold,
+#   grid = rb_grid_rf
+# )
+
+write_rds(tune_rb_rf, file = 'rf_tune.rds')
+
+tune_rb_rf <- read_rds('rf_tune.rds')
+
+autoplot(tune_rb_rf)
+
+collect_metrics(tune_rb_rf)
+
+best_rb_rf <- select_best(tune_rb_rf,
+                          metric = "roc_auc",
+                          mtry,
+                          trees,
+                          n_min
+                          )
+
+rb_final_rf <- finalize_workflow(rainbow_rf_wflow,
+                                      best_rb_rf)
+
+rb_final_rf <- fit(rb_final_rf, 
+                        data = rainbow_train)
+
+augment(rb_final_rf, new_data = rainbow_train) %>%
+  roc_auc(haswon, .pred_1)
+```
+
+```{r}
+rainbow_log_acc <- predict(rainbow_fit_log, new_data = rainbow_train, type = "class") %>% 
+  bind_cols(rainbow_train %>% select(haswon)) %>% 
+  accuracy(truth = haswon, estimate = .pred_class)
+rainbow_knn_acc <- predict(rainbow_fit_knn, new_data = rainbow_train, type = "class") %>% 
+  bind_cols(rainbow_train %>% select(haswon)) %>% 
+  accuracy(truth = haswon, estimate = .pred_class)
+
+results <- bind_rows(rainbow_log_acc, rainbow_knn_acc) %>% 
+  tibble() %>% mutate(model = c("Logistic Regression", "KNN")) %>% 
+  select(model, .estimate)
+results
+```
+
+```{r}
+rainb_train_log_res <- augment(rainbow_fit_log, new_data = rainbow_train)
+rainb_train_knn_res <- augment(rainbow_fit_knn, new_data = rainbow_train)
+
+log_train_auc <- rainb_train_log_res %>%
+  roc_auc(haswon, .pred_1)
+knn_train_auc <- rainb_train_knn_res %>%
+  roc_auc(haswon, .pred_1)
+
+auc_train_results <- bind_rows(log_train_auc, knn_train_auc) %>%
+  tibble() %>% mutate(model = c("Logistic Regression", "KNN")) %>%
+  select(model, .estimate)
+auc_train_results
+```
+
+```{r, eval=FALSE}
+rainbow_fit_lreg <- logistic_reg(mixture = tune(), 
+                              penalty = tune()) %>%
+  set_mode("classification") %>%
+  set_engine("glmnet")
+
+rainbow_lreg_wflow <- workflow() %>% 
+  add_recipe(rainbow_recipe) %>% 
+  add_model(rainbow_fit_lreg)
+
+rb_grid <- grid_regular(penalty(range = c(0, 1),
+                                     trans = identity_trans()),
+                        mixture(range = c(0, 1)),
+                             levels = 10)
+# 
+# tune_rb_lreg <- tune_grid(
+#   rainbow_lreg_wflow,
+#   resamples = rainbow_fold, 
+#   grid = rb_grid
+# )
+
+write_rds(tune_rb_lreg, file = 'lreg_tune.rds')
+
+tune_rb_lreg <- read_rds('lreg_tune.rds')
+
+autoplot(tune_rb_lreg)
+
+collect_metrics(tune_rb_lreg)
+
+best_rb_lreg <- select_best(tune_rb_lreg,
+                          metric = "roc_auc",
+                          penalty,
+                          mixture
+                          )
+
+rb_final_lreg <- finalize_workflow(rainbow_lreg_wflow,
+                                      best_rb_lreg1)
+
+rb_final_lreg <- fit(rb_final_lreg, 
+                        data = rainbow_train)
+
+augment(rb_final_lreg, new_data = rainbow_train) %>%
+  roc_auc(haswon, .pred_1)
+```
+
+The stronger the penalty, the worse the model performs.
+
+```{r}
+boost_tree(
+  mode = "unknown",
+  engine = "xgboost",
+  mtry = NULL,  # tune
+  trees = NULL,
+  min_n = NULL,
+  tree_depth = NULL,
+  learn_rate = NULL,  # tune
+  loss_reduction = NULL,
+  sample_size = NULL,
+  stop_iter = NULL
+)
+```
+
+```{r}
+
+```
+
