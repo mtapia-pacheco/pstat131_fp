@@ -1,0 +1,536 @@
+---
+title: "Predicting Round Outcomes in Tom Clancy's Rainbow Six Siege"
+author: "Mario Tapia-Pacheco"
+date: "2023-10-19"
+output: html_document
+---
+
+```{r setup, include=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+The aim of this project is to build a machine learning model to predict the 
+outcome of a round from the video game Tom Clancy's Rainbow Six Siege. 
+Tom Clancy’s Rainbow Six Siege is a competitive, tactical first-person shooter 
+in which two teams play against each other in objective-based game modes. Each 
+team consists of five players who choose operators with unique abilities and both 
+teams take turns defending and attacking an objective. This project will be 
+trying several different machine learning algorithms to find the best performing 
+model on this binary classification problem.
+
+```{r echo=FALSE, out.width = "60%", fig.align = "center"}
+knitr::include_graphics("../images/r6_logo.jpg")
+```
+
+The data set I will be using contains an observation for every player in every 
+round played in Tom Clancy’s Rainbow Six Siege over the course of 3 months. I 
+found the data set on Kaggle. The data were originally shared by Ubisoft in 2020, 
+the game’s publisher, but were removed from the website because it is quite 
+outdated. The link to the Kaggle data set is provided [here](https://www.kaggle.com/datasets/maxcobra/rainbow-six-siege-s5-ranked-dataset).
+
+### Disclaimer 
+
+The data set contains roughly 88 million observations and is split into 22 csv 
+files. However, I will be reducing the number to 5,000 observations in order to 
+save memory.
+
+## Data Preprocessing
+
+I do not plan to use weapon attachment information so I will drop all those 
+columns.
+
+```{r}
+data <- read.csv('../data/rainbow_data.csv')
+```
+
+```{r}
+data1 <- data[-c(1,2,6,20:32)]
+```
+
+## Exploratory Data Analysis
+
+```{r, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(tidymodels)
+library(dplyr)
+library(ggplot2)
+library(corrplot)
+library(kknn)
+library(glmnet)
+library(naniar)
+library(discrim)
+library(ranger)
+library(randomForest)
+library(xgboost)
+library(MASS)
+library(caret)
+library(e1071)
+tidymodels_prefer()
+```
+
+```{r}
+data2 <- data1
+data2$skillrank <- factor(data2$skillrank,
+                          levels = c('Unranked', 'Copper', 'Bronze',
+                                     'Silver', 'Gold', 'Platinum', 'Diamond'))
+
+data1$skillrank <- factor(data1$skillrank, 
+                          levels = c('Unranked', 'Copper', 'Bronze',
+                                     'Silver', 'Gold', 'Platinum', 'Diamond'))
+
+data1$haswon <- factor(data1$haswon, levels = c(0, 1))
+```
+
+```{r}
+has_won_no <- data1 %>%
+  filter(haswon == 0) %>%
+  summarise(count = n())
+
+has_won_yes <- data1 %>%
+  filter(haswon == 1) %>% 
+  summarize(count = n())
+
+has_won_counts <- bind_rows(has_won_yes, has_won_no) %>% 
+  tibble() %>% mutate(has_won_ = c("Yes", "No")) %>% 
+  select(has_won_, count)
+
+data1 %>%
+  ggplot() +
+  geom_bar(aes(x = haswon, fill = haswon), color = "black") +
+  theme_minimal()
+```
+
+There are 2478 haswon = 0 (lost) and 2522 haswon = 1 (won). The observations 
+for each are balanced.
+
+Let's take a closer look at the data.
+
+```{r}
+# get avg has won by rank
+win_avg_rank <- data2 %>%
+  select(skillrank, haswon) %>%
+  group_by(skillrank) %>%
+  summarise(winning_avg = mean(haswon)) # Calculate mean of haswon per skillrank
+
+rank_colors <- c("Gold" = "#FFC300", "Silver" = "#C0C0C0", "Bronze" = "peru",
+                 "Platinum" = "#E7E7E7", "Unranked" = "Black",
+                 "Copper" = "#C12200", "Diamond" = "#28E4FF")
+
+# create bar plot
+ggplot(win_avg_rank, aes(x = skillrank, y = winning_avg, fill = skillrank)) +
+  geom_bar(stat = "identity", width = 0.5, color = "black") +
+  scale_fill_manual(values = rank_colors) +
+  labs(title = "Average Winning Rate by Skill Rank", x = "Skill Rank", y = "Average Winning Rate") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# there seems to be a positive correlation here with rank and winning avg
+```
+
+```{r}
+# get avg haswon by role
+win_avg_role <- data2 %>%
+  select(role, haswon) %>%
+  group_by(role) %>%
+  summarise(winning_avg = mean(haswon))
+
+role_col <- c("Attacker" = "#0054E9", "Defender" = "#F39303")
+
+# create bar plot
+ggplot(win_avg_role, aes(x = role, y = winning_avg, fill = role)) +
+  geom_bar(stat = "identity", width = 0.5, color = "black") +
+  scale_fill_manual(values = role_col) +
+  labs(title = "Average Winning Rate by Role", x = "Role", y = "Average Winning Rate") +
+  theme_minimal()
+
+# attackers and defenders winning avg are balanced
+```
+
+```{r}
+# get avg haswon by game mode
+win_avg_mode <- data2 %>%
+  select(gamemode, haswon) %>%
+  group_by(gamemode) %>%
+  summarise(winning_avg = mean(haswon))
+
+# create bar plot
+ggplot(win_avg_mode, aes(x = gamemode, y = winning_avg, fill = gamemode)) +
+  geom_bar(stat = "identity", width = 0.5, color = "black") +
+  labs(title = "Average Winning Rate by Game Mode", x = "Game Mode", y = "Average Winning Rate") +
+  theme_minimal()
+
+# different game mode avgs seem relatively balanced
+```
+
+```{r}
+# get avg haswon by mode by role
+win_avg_gmrole <- data2 %>%
+  select(gamemode, role, haswon) %>%
+  group_by(gamemode, role) %>%
+  summarise(winning_avg = mean(haswon))
+
+role_col <- c("Attacker" = "#0054E9", "Defender" = "#F39303")
+
+# create grouped bar plot
+ggplot(win_avg_gmrole, aes(x = gamemode, y = winning_avg, fill = role)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.7, color = "black") +
+  scale_fill_manual(values = role_col) +
+  labs(title = "Average Winning Rate by Game Mode and Role", x = "Game Mode", y = "Average Has Won", fill = "Role") +
+  theme_minimal()
+
+# different game mode avgs even grouped by role seem relatively balanced
+```
+
+```{r}
+# get avg haswon by op
+win_avg_op <- data2 %>%
+  select(operator, haswon) %>%
+  group_by(operator) %>%
+  summarise(winning_avg = mean(haswon))
+
+# create bar plot
+ggplot(win_avg_op, aes(x = operator, y = winning_avg)) +
+  geom_bar(stat = "identity", width = 0.5) +
+  labs(title = "Average Winning Rate by Operator", x = "Operator", y = "Average Has Won") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# some ops such as different reserves have slightly higher win avg
+```
+
+```{r}
+# get avg haswon by map
+win_avg_map <- data2 %>%
+  select(mapname, haswon) %>%
+  group_by(mapname) %>%
+  summarise(winning_avg = mean(haswon))
+
+# create bar plot
+ggplot(win_avg_map, aes(x = mapname, y = winning_avg, fill = mapname)) +
+  geom_bar(stat = "identity", width = 0.5, color = "black") +
+  labs(title = "Average Winning Rate by Map", x = "Skill Rank", y = "Average Has Won") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# maps are pretty balanced
+```
+
+```{r}
+# get avg haswon by kills
+win_avg_kills <- data2 %>%
+  select(nbkills, haswon) %>%
+  group_by(nbkills) %>%
+  summarise(winning_avg = mean(haswon))
+
+# create bar plot
+ggplot(win_avg_kills, aes(x = nbkills, y = winning_avg, fill = nbkills)) +
+  geom_bar(stat = "identity", width = 0.5, color = "black") +
+  labs(title = "Average Winning Rate by Number of Kills", x = "Skill Rank", y = "Average Has Won") +
+  theme_minimal()
+
+# there is likely a positive correlation here with kills and winning avg
+```
+
+
+```{r}
+# get avg haswon by death stat
+win_avg_dead <- data2 %>%
+  select(isdead, haswon) %>%
+  group_by(isdead) %>%
+  summarise(winning_avg = mean(haswon))
+
+# create bar plot
+ggplot(win_avg_dead, aes(x = isdead, y = winning_avg, fill = isdead)) +
+  geom_bar(stat = "identity", color = "black") +
+  labs(title = "Average Winning Rate by Death Status", x = "Skill Rank", y = "Average Has Won") +
+  theme_minimal()
+
+# there seems to be a negative relationship here with dying and winning avg
+```
+
+```{r}
+# get avg haswon by platform
+win_avg_plat <- data2 %>%
+  select(platform, haswon) %>%
+  group_by(platform) %>%
+  summarise(winning_avg = mean(haswon))
+
+# create bar plot
+ggplot(win_avg_plat, aes(x = platform, y = winning_avg, fill = platform)) +
+  geom_bar(stat = "identity", width = 0.5, color = "black") +
+  labs(title = "Average Winning Rate by Platform", x = "Skill Rank", y = "Average Has Won") +
+  theme_minimal()
+
+# looks balanced among diff platforms
+```
+
+```{r}
+data2 %>%
+  select(objectivelocation, role, haswon) %>%
+  group_by(objectivelocation, role) %>%
+  summarise(winning_avg = mean(haswon))
+
+# looks like a multivariate relationship here
+# possible interaction
+```
+
+Let's visualize some of these.
+
+```{r}
+data2 %>% 
+  select(is.numeric) %>% 
+  cor() %>% 
+  corrplot(type = 'lower', diag = FALSE, 
+           method = 'color')
+```
+
+```{r}
+rank_colors <- c("Gold" = "#FFC300", "Silver" = "#C0C0C0", "Bronze" = "peru",
+                 "Platinum" = "#E7E7E7", "Unranked" = "Black",
+                 "Copper" = "#C12200", "Diamond" = "#28E4FF")
+
+data1 %>% 
+  ggplot(aes(x = skillrank, fill = skillrank)) +
+  geom_bar(color = "black") +
+  scale_fill_manual(values = rank_colors) +
+  theme_minimal()
+```
+
+```{r}
+data1 %>% 
+  ggplot(aes(x = clearancelevel)) +
+  geom_histogram(bins=40, fill = "darkred", color = "black") +
+  theme_bw()
+```
+
+Based on my EDA, it seems that there are a good amount of variables that can 
+influence win rate, namely operator, skillrank, mapname/objective_location, role, 
+nbkills, and isdead.
+
+## Fitting Models
+
+Now let's move onto fitting models.
+```{r}
+set.seed(1121)
+rainbow_split <- initial_split(data1, strata = "skillrank", prop = 0.75)
+
+rainbow_train <- training(rainbow_split)
+rainbow_test <- testing(rainbow_split)
+
+rainbow_fold <- vfold_cv(rainbow_train, v = 5)
+```
+
+```{r}
+rainbow_recipe <- recipe(
+  haswon ~ clearancelevel + skillrank + role + nbkills + isdead + objectivelocation, 
+  data = rainbow_train) %>% 
+  step_dummy(all_nominal_predictors()) %>%
+  step_interact(terms = ~ starts_with('role'):starts_with('objectivelocation')) %>%
+  step_nzv(all_predictors()) %>%
+ step_normalize(all_numeric_predictors())
+
+prep(rainbow_recipe) %>% bake(new_data = rainbow_train)
+```
+
+```{r}
+knn_model <- nearest_neighbor(neighbors=tune()) %>% # tune n
+  set_engine("kknn") %>% 
+  set_mode("classification")
+
+rainbow_knn_wflow <- workflow() %>%
+  add_model(knn_model) %>%
+  add_recipe(rainbow_recipe)
+
+knn_tune_grid <- grid_regular(neighbors(range = c(1,2000)),
+                              levels = 10)
+
+# tune_knn <- tune_grid(
+#   rainbow_knn_wflow,
+#   resamples = rainbow_fold,
+#   grid = knn_tune_grid
+# )
+# 
+# write_rds(tune_knn, file = '../data/tuning/knn_tune.rds')
+
+tune_knn <- read_rds('../data/tuning/knn_tune.rds')
+
+autoplot(tune_knn)
+
+collect_metrics(tune_knn)
+
+best_knn <- select_best(tune_knn,
+                        metric = "roc_auc",
+                        neighbors
+                        )
+
+final_knn_wf <- finalize_workflow(rainbow_knn_wflow,
+                                      best_knn)
+
+rb_final_knn <- fit(final_knn_wf, 
+                        data = rainbow_train)
+```
+
+```{r}
+log_reg_rainbow <- logistic_reg() %>%
+  set_mode("classification") %>%
+  set_engine("glm")
+
+rainbow_log_wflow <- workflow() %>% 
+  add_recipe(rainbow_recipe) %>% 
+  add_model(log_reg_rainbow)
+
+rainbow_fit_log <- fit(rainbow_log_wflow, data = rainbow_train)
+```
+
+```{r}
+rf_rainbow <- rand_forest(
+  mtry = tune(), 
+  trees = tune(), 
+  min_n = tune()) %>%
+  set_mode("classification") %>%
+  set_engine("ranger")
+
+rainbow_rf_wflow <- workflow() %>% 
+  add_recipe(rainbow_recipe) %>% 
+  add_model(rf_rainbow)
+
+rb_grid_rf <- grid_regular(mtry(range = c(1, 10)),
+                        min_n(range = c(50, 1000)),
+                        trees(range = c(10,600)),
+                             levels = 10)
+# tune_rb_rf <- tune_grid(
+#   rainbow_rf_wflow,
+#   resamples = rainbow_fold,
+#   grid = rb_grid_rf
+# )
+# 
+# write_rds(tune_rb_rf, file = '../data/tuning/rf_tune.rds')
+
+tune_rb_rf <- read_rds('../data/tuning/rf_tune.rds')
+
+autoplot(tune_rb_rf)
+
+collect_metrics(tune_rb_rf)
+
+best_rb_rf <- select_best(tune_rb_rf,
+                          metric = "roc_auc",
+                          mtry,
+                          trees,
+                          n_min
+                          )
+
+rb_final_rf <- finalize_workflow(rainbow_rf_wflow,
+                                      best_rb_rf)
+
+rb_final_rf <- fit(rb_final_rf, 
+                        data = rainbow_train)
+
+augment(rb_final_rf, new_data = rainbow_train) %>%
+  roc_auc(haswon, .pred_1)
+```
+
+```{r}
+rainbow_log_acc <- predict(rainbow_fit_log, new_data = rainbow_train, type = "class") %>% 
+  bind_cols(rainbow_train %>% select(haswon)) %>% 
+  accuracy(truth = haswon, estimate = .pred_class)
+rainbow_log_acc
+```
+
+```{r}
+rainb_train_log_res <- augment(rainbow_fit_log, new_data = rainbow_train)
+
+log_train_auc <- rainb_train_log_res %>%
+  roc_auc(haswon, .pred_1)
+
+log_train_results <- bind_rows(log_train_auc, rainbow_log_acc) %>%
+  tibble() %>% mutate(metric = c("roc auc", "acc")) %>%
+  select(metric, .estimate)
+
+log_train_results
+```
+
+```{r, eval=FALSE}
+rainbow_fit_lreg <- logistic_reg(mixture = tune(), 
+                              penalty = tune()) %>%
+  set_mode("classification") %>%
+  set_engine("glmnet")
+
+rainbow_lreg_wflow <- workflow() %>% 
+  add_recipe(rainbow_recipe) %>% 
+  add_model(rainbow_fit_lreg)
+
+rb_grid <- grid_regular(penalty(range = c(0, 1),
+                                     trans = identity_trans()),
+                        mixture(range = c(0, 1)),
+                             levels = 10)
+
+# tune_rb_lreg <- tune_grid(
+#   rainbow_lreg_wflow,
+#   resamples = rainbow_fold,
+#   grid = rb_grid
+# )
+# 
+# write_rds(tune_rb_lreg, file = '../data/tuning/lreg_tune.rds')
+
+tune_rb_lreg <- read_rds('../data/tuning/lreg_tune.rds')
+
+autoplot(tune_rb_lreg)
+
+collect_metrics(tune_rb_lreg)
+
+best_rb_lreg <- select_best(tune_rb_lreg,
+                          metric = "roc_auc",
+                          penalty,
+                          mixture
+                          )
+
+rb_final_lreg <- finalize_workflow(rainbow_lreg_wflow,
+                                      best_rb_lreg)
+
+rb_final_lreg <- fit(rb_final_lreg, 
+                        data = rainbow_train)
+
+augment(rb_final_lreg, new_data = rainbow_train) %>%
+  roc_auc(haswon, .pred_1)
+```
+
+The stronger the penalty, the worse the model performs.
+
+```{r}
+# # Create a workflow with the recipe
+# svm_wflow <- workflow() %>%
+#   add_recipe(rainbow_recipe) %>%
+#   add_model("svmLinear")
+# 
+# # Train the SVM model using the workflow
+# svm_trained <- svm_workflow %>%
+#   fit(data = rainbow_train)
+# 
+# svm_trained
+
+
+# rainbow_recipe |> prep() |> formula()
+# haswon ~ clearancelevel + nbkills + isdead + skillrank_Unranked + 
+#     skillrank_Bronze + skillrank_Silver + skillrank_Gold + skillrank_Platinum + 
+#     role_Attacker + role_Defender
+
+# classifier = svm(formula = haswon ~ .,
+#                  data = rainbow_train,
+#                  type = 'C-classification',
+#                  kernel = 'linear')
+# 
+# summary(classifier)
+# 
+# augment(classifier, new_data = rainbow_train)
+# rainbow_fit_svm <- svm(rainbow_recipe) %>%
+#   set_mode("classification") %>%
+#   set_engine("svmLinear")
+# 
+# rainbow_svm_wflow <- workflow() %>% 
+#   add_recipe(rainbow_recipe) %>% 
+#   add_model(rainbow_fit_svm)
+
+```
+
