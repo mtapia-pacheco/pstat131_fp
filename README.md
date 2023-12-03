@@ -1,6 +1,6 @@
 # Predicting Round Outcomes in Tom Clancy's Rainbow Six Siege
 
-What machine learning model can best predict the outcome of a round in the first-person shooter, Tom Clancy's Rainbow Six Siege.
+What machine learning model can best predict the outcome of a round in the first-person shooter, Tom Clancy's Rainbow Six Siege?
 
 
 ## Motivation
