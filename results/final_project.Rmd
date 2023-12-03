@@ -10,7 +10,9 @@ output:
 ---
 
 ```{r setup, warning=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE,
+                      warning = FALSE,
+                      message = FALSE)
 ```
 
 ## Introduction
@@ -334,7 +336,30 @@ nbkills, and isdead.
 
 ## Fitting Models
 
-Now let's move onto fitting models.
+### Metrics
+
+The metrics I will be using to evaluate my models are classification accuracy 
+and area under the receiver operating curve. Classification accuracy is simply 
+the ratio of the number of correct predictions to the total number of input 
+observations.
+
+```{r echo=FALSE, out.width = "50%", fig.align = "center"}
+knitr::include_graphics("../images/acc_table.jpg")
+```
+
+The area under the receiver operating curve (AUC ROC) is the area measured under 
+the receiver operating curve. The ROC is a graph that plots the performance of 
+a binary classifier at different values of true positive rates (sensitivity) and 
+false positive rates (1-specificity). A model with an area under the ROC of 0.5 
+is a random classifier, while a model with an area under the ROC of 1 is a 
+perfect classifier. Visually, the closer the ROC is to the top left corner, the 
+better it is at classifying.
+
+```{r echo=FALSE, out.width = "50%", fig.align = "center"}
+knitr::include_graphics("../images/roc_auc.png")
+```
+
+Now let's move on to fitting models.
 ```{r}
 # set seed for reproducibility
 set.seed(1121)
@@ -367,13 +392,13 @@ prep(rainbow_recipe) %>% bake(new_data = rainbow_train)  # prep and bake recipe
 
 #### Standard Logistic Regression
 
-```{r echo=FALSE, out.width = "60%", fig.align = "center"}
-knitr::include_graphics("../images/log_reg.png")
-```
-
 Standard logistic regression is a model that returns probabilities ranging from 
 0 to 1. It is used in classification problems and can be very useful in 
 understanding relationships between variables.
+
+```{r echo=FALSE, out.width = "60%", fig.align = "center"}
+knitr::include_graphics("../images/log_reg.png")
+```
 
 ```{r}
 # create log reg model
@@ -419,7 +444,7 @@ is a regularization method that uses both ridge and lasso regression.
 Regularization is used to constrain or shrink coefficient estimates towards zero 
 and it can be very helpful in selecting features.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 # create en model
 rainbow_fit_lreg <- logistic_reg(mixture = tune(), 
                               penalty = tune()) %>%
@@ -490,9 +515,9 @@ en_train_results <- bind_rows(en_auc, en_acc) %>%
 en_train_results
 ```
 
-The results suggest that the stronger the penalty, the worse the model performs. 
-Our elastic net regression may simply not be needed with our data, so we can try 
-other models.
+The results suggest that the stronger the penalty is, the worse the model 
+performs. Our elastic net regression may simply not be needed with our data, so we
+can try other models.
 
 ### K-Nearest Neighbors
 
@@ -502,7 +527,7 @@ regression and classification problems, but we will use it for classification.
 The model gets information about the "k" nearest data points and classifies 
 new data points based on the majority.
 
-```{r echo=FALSE, out.width = "60%", fig.align = "center"}
+```{r echo=FALSE, out.width = "70%", fig.align = "center"}
 knitr::include_graphics("../images/knn_model.png")
 ```
 
@@ -665,9 +690,21 @@ rb_final_rf %>% extract_fit_parsnip() %>%
   theme_minimal()
 ```
 
+This variable importance plot tells use that whether or not a player has died in 
+the round and how many kills the player has in the round are the most useful 
+in predicting the outcome of a round. A player's role and skill rank are not very 
+useful predictors for this classification problem. 
+
 ### Support Vector Machines
 
-Support vector machines 
+Support vector machines are models that classify data by finding support 
+vector classifiers, a term for a boundary that best separates two different 
+categories. Using radial and polynomial kernels means support vector 
+classifiers are found in higher dimensions.
+
+```{r echo=FALSE, out.width = "100%", fig.align = "center"}
+knitr::include_graphics("../images/svm_model.png")
+```
 
 #### Linear Kernel
 
@@ -683,7 +720,7 @@ svm_lin_wflow <- workflow() %>%
   add_model(svm_linear_spec)
 
 # create grid for cost and degree
-svm_lin_grid <- grid_regular(cost(), degree(), levels = 10)
+svm_lin_grid <- grid_regular(cost(), levels = 10)
 
 # tune cost and grid
 # svm_lin_res <- tune_grid(svm_lin_wflow,
@@ -697,7 +734,7 @@ svm_lin_grid <- grid_regular(cost(), degree(), levels = 10)
 # read in outputted rds file
 svm_lin_res <- read_rds('../data/tuning/svml_tune.rds')
 
-# visualize performance by diff hyper params
+# visualize performance by diff costs
 svm_lin_res %>% autoplot()
 ```
 
@@ -705,8 +742,7 @@ svm_lin_res %>% autoplot()
 # select best performing model in terms of auc
 svm_best_lin <- select_best(svm_lin_res,
                             metric = "roc_auc",
-                            cost,
-                            degree)
+                            cost)
 
 # finalize workflow and fit to training data
 svm_final_lin_fit <- finalize_workflow(svm_lin_wflow, svm_best_lin) %>% 
@@ -729,6 +765,68 @@ lin_svm_train_results <- bind_rows(lin_svm_auc, lin_svm_acc) %>%
 
 # display
 lin_svm_train_results
+```
+
+#### Polynomial Kernel
+
+```{r}
+# create polynomial svm model
+svm_poly_spec <- svm_poly(degree = tune(), cost = tune()) %>%
+  set_mode("classification") %>%
+  set_engine("kernlab")
+
+# create poly svm workflow
+svm_poly_wflow <- workflow() %>% 
+  add_recipe(rainbow_recipe) %>% 
+  add_model(svm_poly_spec)
+
+# create grid for cost and degree
+svm_poly_grid <- grid_regular(cost(), degree(), levels = 10)
+
+# tune cost and grid
+# svm_poly_res <- tune_grid(svm_poly_wflow,
+#                             rainbow_fold, svm_poly_grid)
+
+# write results to rds file to reduce knit time
+# write_rds(svm_poly_res, file = '../data/tuning/svmp_tune.rds')
+```
+
+```{r}
+# read in outputted rds file
+svm_poly_res <- read_rds('../data/tuning/svmp_tune.rds')
+
+# visualize performance by diff hyper params
+svm_poly_res %>% autoplot()
+```
+
+```{r}
+# select best performing model in terms of auc
+svm_best_poly <- select_best(svm_poly_res,
+                            metric = "roc_auc",
+                            cost,
+                            degree)
+
+# finalize workflow and fit to training data
+svm_final_poly_fit <- finalize_workflow(svm_poly_wflow, svm_best_poly) %>% 
+  fit(rainbow_train)
+
+# extract information about linear svm model
+svm_final_poly_fit %>%
+  extract_fit_engine()
+```
+
+```{r}
+# evaluate performance
+poly_svm_auc <- augment(svm_final_poly_fit, new_data = rainbow_train) %>%
+  roc_auc(haswon, .pred_0)
+poly_svm_acc <- augment(svm_final_poly_fit, new_data = rainbow_train) %>%
+  accuracy(haswon, .pred_class)
+poly_svm_train_results <- bind_rows(poly_svm_auc, poly_svm_acc) %>%
+  tibble() %>% mutate(metric = c("roc auc", "acc")) %>%
+  select(metric, .estimate)
+
+# display
+poly_svm_train_results
 ```
 
 #### Radial Kernel 
@@ -806,6 +904,8 @@ rf_train_results <- rf_train_results %>%
   mutate(model = "Random Forest")
 lin_svm_train_results <- lin_svm_train_results %>%
   mutate(model = "Support Vector Machine (Linear Kernel)")
+poly_svm_train_results <- poly_svm_train_results %>%
+  mutate(model = "Support Vector Machine (Polynomial Kernel)")
 rad_svm_train_results <- rad_svm_train_results %>%
   mutate(model = "Support Vector Machine (Radial Kernel)")
 
@@ -815,6 +915,7 @@ combined_train_results <- rbind(log_train_results,
                                 knn_train_results,
                                 rf_train_results,
                                 lin_svm_train_results,
+                                poly_svm_train_results,
                                 rad_svm_train_results)
 
 # display
@@ -825,6 +926,8 @@ The random forest performed the best on the training data, so that will be the
 model we will evaluate using the testing data. Random forest models work great
 for predicting a large variety of data sets since it is non-parametric and makes 
 no assumptions, so it is a more flexible.
+
+### Fitting Random Forest to Training Data
 
 ```{r}
 # evaluate performance
@@ -840,11 +943,38 @@ rf_test_results <- bind_rows(rf_test_auc, rf_test_acc) %>%
 rf_test_results
 ```
 
+Our random forest model did an acceptable job at classifying new observations. It 
+achieved an AUC ROC of 0.79 and classification accuracy of 0.75 when fit to the 
+testing data. Let's visualize these metrics.
+
 ```{r}
 # visualize ROC curve
-augment(rb_final_rf, rainbow_test) %>% 
-  select(haswon, starts_with(".pred")) %>% 
+final_rf_test <- augment(rb_final_rf, rainbow_test) %>% 
+  select(haswon, starts_with(".pred")) 
+
+final_rf_test %>% 
   roc_curve(haswon, .pred_0) %>% 
   autoplot()
+```
+
+As we can see, the ROC goes in the direction of the top left corner. It 
+performed decently on the testing data.
+
+```{r}
+# visualize confusion matrix
+conf_mat(final_rf_test, truth = haswon, 
+         .pred_class) %>% 
+  autoplot(type = "heatmap")
+```
+
+We can  get a closer look at the predictions that the random forest model made by 
+inspecting its confusion matrix. The model predicted approximately 2.5 times 
+more observations as round lost than round won. This was the case even though the 
+data was stratified on 'haswon'. Regardless, the model did not perform too bad.
+
+## Conclusion
+
+```{r echo=FALSE, out.width = "90%", fig.align = "center"}
+knitr::include_graphics("../images/hold_angle.png")
 ```
 
