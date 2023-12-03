@@ -28,19 +28,19 @@ Through various iterations of models and the testing of them, I was able to find
 
 |-- images
 
-    |-- acc_table.jpg
+   |-- acc_table.jpg
 
-    ...
+   ...
 
-    |-- svm_model.png
+   |-- svm_model.png
 
 |-- results
 
-    |-- final_project.html  # knitted hmtl document with report
+   |-- final_project.html  # knitted hmtl document with report
 
-    |-- final_project.rmd   # rmd file containing code for project
+   |-- final_project.rmd   # rmd file containing code for project
 
-    |-- fp  # pdf file converted from html
+   |-- fp  # pdf file converted from html
 
 |-- .gitignore
 
