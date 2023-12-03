@@ -15,7 +15,7 @@ this binary classification problem.
 ## Method and results
 
 After pre-processing the data and performing exploratory data analysis, I decided to fit a total of seven models to the training data. I fit a regular logistic regression, an elastic net 
-logistic regression, a k-nearest neighbors model, a random forest, a linear support vector machine, and three types of support vector machines. Using cross validation, I chose the 
+logistic regression, a k-nearest neighbors model, a random forest, and three types of support vector machines. Using cross validation, I chose the 
 random forest model as the model to evaluate using testing data.
 
 Through various iterations of models and the testing of them, I was able to find that the best predictive model for classifying the outcome of a round was a random forest model. It did a decent job at predicting new observations, with a classification accuracy of 0.79 and area under the receiver operating curve of 0.75.
