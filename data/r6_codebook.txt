@@ -1,0 +1,31 @@
+"platform": video game platform that the round was played on (takes on values: PS4, XONE, PC)
+
+"gamemode": game mode that was played in round (takes on values: BOMB, HOSTAGE, SECURE_AREA)
+
+"mapname": name of map that round was played on (takes on several values, 16 total maps)
+
+"roundnumber": round number in game (takes on integer values from 1-9)  
+
+"objectivelocation": name of objective that round was played on (takes on several values, 142 total objective locations)
+
+"winrole": role that won the round (takes on values: Attacker, Defender)
+
+"endroundreason": reason why round ended (takes on several values, 14 total reasons for end of round)
+
+"roundduration": length of round (in seconds)    
+
+"clearancelevel": skill level of player in observation (takes on positive integer values starting from 0)
+
+"skillrank": current rank of player in observation (takes on values: Unranked, Copper, Bronze, Silver, Gold, Platinum, Diamond)
+
+"role": role of player in current round (takes on values: Attacker, Defender)
+
+"team":  binary representation of player's team (takes on values: 0 or 1)  
+
+"haswon": binary representation of round outcome for player (takes on values: 0 for a loss or 1 for a win)
+
+"operator": name of operator that player uses in round (takes on several values, 35 total operators)
+
+"nbkills": number of kills player got in the round (takes on integer values from 0 to 5)
+
+"isdead": binary representation of player's death status in the round (takes on values: 0 for did not die or 1 for did die)

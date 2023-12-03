@@ -368,6 +368,23 @@ knitr::include_graphics("../images/roc_auc.png")
 Now let's move on to fitting models.
 
 #### Splitting Data
+
+In order for us to use our data to train models, we have to partition it into 
+training and testing splits. We do this because it is not productive to train our
+models on all the available data, otherwise we would have no way to measure their
+performance on new observations that they have not seen. I will use 75% of the 
+data to train the models and the remaining 25% to test the one I will end up 
+choosing. I chose to stratify on our response variable, "haswon", to ensure 
+that our samples have a balanced amount of observations in each case.
+
+We will also be using the 5-fold cross validation technique on the data. 5-fold 
+cross validation is the process of partitioning our training data even further 
+into five equal partitions where we will use four folds at a time to train our 
+data, then the remaining fold to test our data. This process ensures that we 
+get a reliable estimate of our models' testing errors. Cross validation evaluates
+models using training data, thus it is used to choose the model that we will 
+evaluate using the testing data.
+
 ```{r}
 # set seed for reproducibility
 set.seed(1121)
