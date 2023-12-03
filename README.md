@@ -25,18 +25,31 @@ Through various iterations of models and the testing of them, I was able to find
 
 
 ├── data
+
 ├── images
+
 │   ├── analysis
+
 │   ├── data-preparation
+
 │   └── paper
+
 └── results
+
 |   ├── analysis
+
 |   ├── data-preparation
+
 |   └── paper
+
 └── .gitignore
+
 ├── .RData
+
 ├── .Rhistory
+
 ├── final_project.Rproj
+
 ├── README.md
 
 
