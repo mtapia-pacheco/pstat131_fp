@@ -24,34 +24,9 @@ Through various iterations of models and the testing of them, I was able to find
 ## Repository overview
 
 
-|-- data
-
-|-- images
-
-   |-- acc_table.jpg
-
-   ...
-
-   |-- svm_model.png
-
-|-- results
-
-   |-- final_project.html  # knitted hmtl document with report
-
-   |-- final_project.rmd   # rmd file containing code for project
-
-   |-- fp  # pdf file converted from html
-
-|-- .gitignore
-
-|-- .RData
-
-|-- .Rhistory
-
-|-- final_project.Rproj
-
-|-- README.md
-
+* data - the data folder contains all csv files, a codebook, and hyper parameter tuning results
+* images - the images folder contains all png/jpg files I used throughout the report
+* results - the results folder contains the knitted html file for the report, the rmd file with all code for the project, and a pdf version of the knitted html file.
 
 
 ## Running instructions
