@@ -29,11 +29,6 @@ Through various iterations of models and the testing of them, I was able to find
 * results - the results folder contains the knitted html file for the report, the rmd file with all code for the project, and a pdf version of the knitted html file.
 
 
-## Running instructions
-
-Explain to potential users how to run/replicate your workflow. If necessary, touch upon the required input data, which secret credentials are required (and how to obtain them), which software tools are needed to run the workflow (including links to the installation instructions), and how to run the workflow.
-
-
 ## More resources
 
 * Link to the Kaggle data set can be found [here](https://www.kaggle.com/datasets/maxcobra/rainbow-six-siege-s5-ranked-dataset).
