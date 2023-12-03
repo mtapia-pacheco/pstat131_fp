@@ -24,33 +24,33 @@ Through various iterations of models and the testing of them, I was able to find
 ## Repository overview
 
 
-├── data
+|-- data
 
-├── images
+|-- images
 
-│   ├── analysis
+│   |-- analysis
 
-│   ├── data-preparation
+│   |-- data-preparation
 
-│   └── paper
+│   '-- paper
 
-└── results
+'-- results
 
-|   ├── analysis
+|   |-- analysis
 
-|   ├── data-preparation
+|   |-- data-preparation
 
-|   └── paper
+|   '-- paper
 
-└── .gitignore
+'-- .gitignore
 
-├── .RData
+|-- .RData
 
-├── .Rhistory
+|-- .Rhistory
 
-├── final_project.Rproj
+|-- final_project.Rproj
 
-├── README.md
+|-- README.md
 
 
 
