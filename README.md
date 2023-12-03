@@ -6,8 +6,8 @@ What machine learning model can best predict the outcome of a round in the first
 ## Motivation
 
 Tom Clancy's Rainbow Six Siege is one of my favorite video games of all time. I started playing when it first released in 2015 and have continued to play since. The aim of this project 
-is to build a machine learning model to predict the outcome of a round from the video game Tom Clancy’s Rainbow Six Siege. Tom Clancy’s Rainbow Six Siege is a competitive, tactical 
-first-person shooter in which two teams play against each other in objective-based game modes. Each team consists of five players who choose operators with unique 
+is to build a machine learning model using R to predict the outcome of a round from the video game Tom Clancy’s Rainbow Six Siege. Tom Clancy’s Rainbow Six Siege is a competitive, 
+tactical first-person shooter in which two teams play against each other in objective-based game modes. Each team consists of five players who choose operators with unique 
 abilities and both teams take turns defending and attacking an objective. This project will be trying several different machine learning algorithms to find the best performing model on 
 this binary classification problem.
 
