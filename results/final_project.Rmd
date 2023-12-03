@@ -9,7 +9,7 @@ output:
     toc_float: true
 ---
 
-```{r setup, warning=FALSE}
+```{r setup, echo = FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE,
                       warning = FALSE,
                       message = FALSE)
@@ -17,17 +17,22 @@ knitr::opts_chunk$set(echo = TRUE,
 
 ## Introduction
 
+
+```{r echo=FALSE, out.width = "60%", fig.align = "center"}
+knitr::include_graphics("../images/r6_logo.jpg")
+```
+
 The aim of this project is to build a machine learning model to predict the 
 outcome of a round from the video game Tom Clancy's Rainbow Six Siege. 
 Tom Clancy’s Rainbow Six Siege is a competitive, tactical first-person shooter 
 in which two teams play against each other in objective-based game modes. Each 
-team consists of five players who choose operators with unique abilities and both 
+team consists of five players who choose operators with unique abilities and both
 teams take turns defending and attacking an objective. This project will be 
 trying several different machine learning algorithms to find the best performing 
 model on this binary classification problem.
 
 ```{r echo=FALSE, out.width = "60%", fig.align = "center"}
-knitr::include_graphics("../images/r6_logo.jpg")
+knitr::include_graphics("../images/operators.jpg")
 ```
 
 The data set I will be using contains an observation for every player in every 
@@ -123,8 +128,9 @@ data1 %>%
   theme_minimal()
 ```
 
-There are 2478 haswon = 0 (lost) and 2522 haswon = 1 (won). The observations 
-for each are balanced and thus we won't need to upsample or downsample.
+There are 2,478 observations with haswon = 0 (lost) and 2,522 observations 
+with haswon = 1 (won). The observations for each case are balanced and thus we 
+won't need to upsample or downsample.
 
 Let's take a closer look at the data.
 
@@ -146,8 +152,7 @@ ggplot(win_avg_rank, aes(x = skillrank, y = winning_avg, fill = skillrank)) +
   geom_bar(stat = "identity", width = 0.5, color = "black") +
   scale_fill_manual(values = rank_colors) +
   labs(title = "Average Winning Rate by Skill Rank", x = "Skill Rank", y = "Average Winning Rate") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  theme_minimal() 
 
 # there seems to be a positive correlation here with rank and winning avg
 ```
@@ -216,7 +221,7 @@ win_avg_op <- data2 %>%
 # create bar plot
 ggplot(win_avg_op, aes(x = operator, y = winning_avg)) +
   geom_bar(stat = "identity", width = 0.5) +
-  labs(title = "Average Winning Rate by Operator", x = "Operator", y = "Average Has Won") +
+  labs(title = "Average Winning Rate by Operator", x = "Operator", y = "Average Winning Rate") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
@@ -233,7 +238,7 @@ win_avg_map <- data2 %>%
 # create bar plot
 ggplot(win_avg_map, aes(x = mapname, y = winning_avg, fill = mapname)) +
   geom_bar(stat = "identity", width = 0.5, color = "black") +
-  labs(title = "Average Winning Rate by Map", x = "Skill Rank", y = "Average Has Won") +
+  labs(title = "Average Winning Rate by Map", x = "Map Name", y = "Average Winning Rate") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
@@ -250,7 +255,7 @@ win_avg_kills <- data2 %>%
 # create bar plot
 ggplot(win_avg_kills, aes(x = nbkills, y = winning_avg, fill = nbkills)) +
   geom_bar(stat = "identity", width = 0.5, color = "black") +
-  labs(title = "Average Winning Rate by Number of Kills", x = "Skill Rank", y = "Average Has Won") +
+  labs(title = "Average Winning Rate by Number of Kills", x = "Number of Kills", y = "Average Winning Rate") +
   theme_minimal()
 
 # there is likely a positive correlation here with kills and winning avg
@@ -267,7 +272,7 @@ win_avg_dead <- data2 %>%
 # create bar plot
 ggplot(win_avg_dead, aes(x = isdead, y = winning_avg, fill = isdead)) +
   geom_bar(stat = "identity", color = "black") +
-  labs(title = "Average Winning Rate by Death Status", x = "Skill Rank", y = "Average Has Won") +
+  labs(title = "Average Winning Rate by Death Status", x = "Death Status", y = "Average Winning Rate") +
   theme_minimal()
 
 # there seems to be a negative relationship here with dying and winning avg
@@ -283,7 +288,7 @@ win_avg_plat <- data2 %>%
 # create bar plot
 ggplot(win_avg_plat, aes(x = platform, y = winning_avg, fill = platform)) +
   geom_bar(stat = "identity", width = 0.5, color = "black") +
-  labs(title = "Average Winning Rate by Platform", x = "Skill Rank", y = "Average Has Won") +
+  labs(title = "Average Winning Rate by Platform", x = "Platform", y = "Average Winning Rate") +
   theme_minimal()
 
 # looks balanced among diff platforms
@@ -330,9 +335,10 @@ data2 %>%
            method = 'color')
 ```
 
-Based on my EDA, it seems that there are a good amount of variables that can 
-influence win rate, namely skillrank, mapname/objective_location, role, 
-nbkills, and isdead.
+Based on my exploratory data analysis, it seems that there are a good amount of 
+variables that can influence win rate, namely skillrank, 
+mapname/objective_location, role, nbkills, and isdead. Win rates seem to either 
+increase or decrease with these variables as they change values.
 
 ## Fitting Models
 
@@ -360,6 +366,8 @@ knitr::include_graphics("../images/roc_auc.png")
 ```
 
 Now let's move on to fitting models.
+
+#### Splitting Data
 ```{r}
 # set seed for reproducibility
 set.seed(1121)
@@ -373,6 +381,7 @@ rainbow_test <- testing(rainbow_split)
 rainbow_fold <- vfold_cv(rainbow_train, strata = "haswon", v = 5)
 ```
 
+#### Creating Recipe
 ```{r}
 # create recipe using useful predictors
 rainbow_recipe <- recipe(
@@ -925,7 +934,7 @@ combined_train_results
 The random forest performed the best on the training data, so that will be the 
 model we will evaluate using the testing data. Random forest models work great
 for predicting a large variety of data sets since it is non-parametric and makes 
-no assumptions, so it is a more flexible.
+no assumptions, so it is more flexible.
 
 ### Fitting Random Forest to Training Data
 
@@ -978,3 +987,42 @@ data was stratified on 'haswon'. Regardless, the model did not perform too bad.
 knitr::include_graphics("../images/hold_angle.png")
 ```
 
+Through various iterations of models and the testing of them, we were able to 
+find that the best predictive model for classifying the outcome of a round was 
+a random forest model. It did a decent job at predicting new observations, with 
+a classification accuracy of 0.79 and area under the receiver operating curve of 
+0.75. 
+
+Something interesting to note is that every other model performed practically 
+the same when evaluated with the training data. While the random forest had the 
+highest area under the ROC, every other model only differed by at most 0.01. 
+This could be caused by a few reasons, but I believe it is likely caused by one
+of the following two reasons. First, if the variables I chose to include in my 
+model are relevant enough to the classification problem, different models can 
+capture similar patterns in the data. Second, if the data set is relatively 
+simple or homogeneous, different models could achieve similar performance.
+
+I think this model can be improved by including a few more variables not present 
+in the data set. For instance, I believe measuring how many people the player is 
+queued with would be a great help in predicting a round outcome. After all, 
+Rainbow Six Siege is a team-based game that relies heavily on the 
+communication and coordination of teams. Also, knowing the player's kill to death
+ratio would likely boost all the models' performances since we saw in the
+variable importance plot that the number of kills a player had and whether or not
+they died in the round were the most useful in predicting round outcomes.
+
+If I were to expand on this project I would like to have more recent data to work
+with. The data I used are from over four years ago and since then, the game has 
+gotten a lot of updates, more players, and new strategies that teams use. I would
+also like to fit a neural network to this data. Neural networks have a lot of 
+useful properties and benefits such as their abilities to model non-linear 
+relationships in data and learn relevant features.
+
+Attempting to predict the round outcomes of a first-person shooter allowed me 
+to practice building machine learning models while also learning more about the 
+game. Building the models involved a lot more than simply copying and pasting 
+code; it required me to analyze relationships between several variables, choose 
+models based on the data I had available and the problem I wanted to solve, and 
+dealing with a lot of uncertainty such as the tuning of hyper parameters. 
+Although the random forest only did an acceptable job at classifying new data, 
+I am content with the experience I was able to gain from this project.
