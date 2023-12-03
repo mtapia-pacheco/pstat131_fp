@@ -28,21 +28,21 @@ Through various iterations of models and the testing of them, I was able to find
 
 |-- images
 
-│   |-- analysis
+    |-- acc_table.jpg
 
-│   |-- data-preparation
+    ...
 
-│   '-- paper
+    |-- svm_model.png
 
-'-- results
+|-- results
 
-|   |-- analysis
+    |-- final_project.html  # knitted hmtl document with report
 
-|   |-- data-preparation
+    |-- final_project.rmd   # rmd file containing code for project
 
-|   '-- paper
+    |-- fp  # pdf file converted from html
 
-'-- .gitignore
+|-- .gitignore
 
 |-- .RData
 
