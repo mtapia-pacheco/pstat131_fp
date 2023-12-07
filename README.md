@@ -24,35 +24,35 @@ Through various iterations of models and the testing of them, I was able to find
 ## Repository overview
 
 
-├── data/
+data
 
-│   ├── tuning/
+|-- tuning
 
-│   │   └── * several rds files to store hyper parameter tuning results
+|   `-- * several rds files to store hyper parameter tuning results
 
-│   ├── r6_codebook.txt  # explanation of variables contained in data set
+|-- r6_codebook.txt  # explanation of variables contained in data set
 
-│   ├── rainbow_data.csv  # csv file with relevant data
+|-- rainbow_data.csv  # csv file with relevant data
 
-│   └── rainbow_data1.csv  # csv file with relevant data
+`-- rainbow_data1.csv  # csv file with relevant data
 
-├── images/
+images
 
-│   └── * several png/jpg files
+`-- * several png/jpg files
 
-├── results/
+results
 
-│   ├── final_project.Rmd  # rmd file containing all code for the models and report
+|-- final_project.Rmd  # rmd file containing all code for the models and report
 
-│   ├── final_project.html  # knitted html file
+|-- final_project.html  # knitted html file
 
-│   └── fp.pdf  # pdf version of html
+`-- fp.pdf  # pdf version of html
 
-├── .gitignore
+.gitignore
 
-├── README.md
+README.md
 
-└── final_project.Rproj
+final_project.Rproj
 
 
 ## More resources
