@@ -28,7 +28,7 @@ data
 
 ├--   tuning
 
- |     └──   * several rds files to store hyper parameter tuning results
+   |     └──   * several rds files to store hyper parameter tuning results
 
 ├--   r6_codebook.txt  # explanation of variables contained in data set
 
