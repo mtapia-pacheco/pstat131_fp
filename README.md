@@ -12,7 +12,7 @@ abilities and both teams take turns defending and attacking an objective. This p
 this binary classification problem.
 
 <div align="center">
-  <img src="https://i.redd.it/sqt5zq9o16yy.gif" width="500">
+  <img src="https://i.pinimg.com/originals/a0/d6/bb/a0d6bb519d45e990231488c8981b64b4.gif" width="500">
 </div>
 
 ## Method and results
