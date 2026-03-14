@@ -12,7 +12,7 @@ abilities and both teams take turns defending and attacking an objective. This p
 this binary classification problem.
 
 <div align="center">
-  <img src="https://media.tenor.com/ouQhtNfzbx8AAAAM/crisqlo-gameplay.gif" width="500">
+  <img src="https://media.tenor.com/B0ihznXCBG0AAAAe/rainbow-six-siege.gif" width="500">
 </div>
 
 ## Method and results
