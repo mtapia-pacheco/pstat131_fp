@@ -11,7 +11,7 @@ tactical first-person shooter in which two teams play against each other in obje
 abilities and both teams take turns defending and attacking an objective. This project will be trying several different machine learning algorithms to find the best performing model on 
 this binary classification problem.
 
-![hippo]([https://media3.giphy.com/media/aUovxH8Vf9qDu/giphy.gif](https://tenor.com/bksjP.gif))
+![hippo](https://media3.giphy.com/media/aUovxH8Vf9qDu/giphy.gif](https://tenor.com/bksjP.gif)
 
 
 ## Method and results
