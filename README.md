@@ -11,8 +11,9 @@ tactical first-person shooter in which two teams play against each other in obje
 abilities and both teams take turns defending and attacking an objective. This project will be trying several different machine learning algorithms to find the best performing model on 
 this binary classification problem.
 
-![hippo](https://media.tenor.com/ouQhtNfzbx8AAAAM/crisqlo-gameplay.gif)
-
+<div align="center">
+  <img src="https://media.tenor.com/ouQhtNfzbx8AAAAM/crisqlo-gameplay.gif" width="500">
+</div>
 
 ## Method and results
 
